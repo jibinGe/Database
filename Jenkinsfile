@@ -14,7 +14,7 @@ pipeline {
             steps {
                 echo "Copying app.py and templates folder to another directory"
                 // sh 'sudo rm -r /home/ubuntu/genesys/genesys/backend/templates'
-                // sh 'sudo rm -r /home/ubuntu/genesys/genesys/backend/app.py'
+                sh 'sudo rm -r /home/ubuntu/app.py'
                 // sh 'sudo cp /var/lib/jenkins/workspace/Flask-Backend_master/app.py /home/ubuntu/genesys/genesys/backend'
                 // sh 'sudo cp -r /var/lib/jenkins/workspace/Flask-Backend_master/templates /home/ubuntu/genesys/genesys/backend'
             }
