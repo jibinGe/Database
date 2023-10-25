@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('Build') {
             parallel {
-                stage('Building') {
+                stage('Building...') {
                     steps {
                         sh 'echo "building the repo"'
                     }
@@ -12,11 +12,9 @@ pipeline {
         }
         stage('Copy Files') {
             steps {
-                echo "Copying app.py and templates folder to another directory"
-                // sh 'sudo rm -r /home/ubuntu/genesys/genesys/backend/templates'
-                sh 'sudo rm -r /home/ubuntu/app.py'
-                // sh 'sudo cp /var/lib/jenkins/workspace/Flask-Backend_master/app.py /home/ubuntu/genesys/genesys/backend'
-                // sh 'sudo cp -r /var/lib/jenkins/workspace/Flask-Backend_master/templates /home/ubuntu/genesys/genesys/backend'
+                echo "Copying app.py folder to another directory"
+                sh 'sudo rm -r /home/ubuntu/genesys/genesys/genesys_db/app.py'
+                sh 'sudo cp /var/lib/jenkins/workspace/Flask-Database_main/app.py /home/ubuntu/genesys/genesys/genesys_db'
             }
         }
         stage('Deploy') {
