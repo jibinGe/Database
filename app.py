@@ -177,10 +177,7 @@ def patient_create():
         dob = data["dob"]
         cycle_id = data["cycle_id"]
         created_by = current_user
-        cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
-        clinicid=cursor.fetchone()
         mobile = data["mobile"]
-        patient_id=clinicid+"_"+patient_id
         created_date = datetime.now().strftime("%Y-%m-%d")
         with connection:
             
@@ -191,6 +188,9 @@ def patient_create():
                     return {"success": False, "message": "Duplicate patient ID"}
                 else:
                     # Insert patient data into the Patient table
+                    cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
+                    clinicid=cursor.fetchone()
+                    patient_id=clinicid+"_"+patient_id
                     cursor.execute(INSERT_PATIENT, (patient_id, full_name, dob, cycle_id, created_by, mobile, created_date))
                     # Log the activity directly in the ActivityLog table
                     activity_data = {
