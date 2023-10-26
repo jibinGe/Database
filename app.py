@@ -207,7 +207,7 @@ def patient_create():
 
                     cursor.execute(GET_ID)
                     id = cursor.fetchone()
-                    return {"success": True, "message": "Patient details added", "id": clinicid}
+                    return {"success": True, "message": "Patient details added", "id": clinicid[0]}
         return {"success": False, "message": "something went wrong"}
     return jsonify({"success": False, "message": "No authorization header"}), 401
 
