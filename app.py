@@ -194,7 +194,7 @@ def patient_create():
                     # Log the activity directly in the ActivityLog table
                     activity_data = {
                         "employee_name": current_user,
-                        "patient_id": patient_id,
+                        "patient_id": patient_id,  
                         "patient_name": full_name,
                         "action_date": datetime.now().strftime("%Y-%m-%d"),
                         "action": "Created",
