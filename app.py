@@ -178,6 +178,11 @@ def patient_create():
         created_by = current_user
         mobile = data["mobile"]
         created_date = datetime.now().strftime("%Y-%m-%d")
+        cursor.execute("SELECT clinicid FROM users WHERE email = %s;", (current_user,))
+        clinic_id = cursor.fetchone()[0]  # Assuming clinicid is a single value, not a tuple
+
+        # Generate the patient_id
+        patient_id = f"{clinic_id}_{patient_id}"
         with connection:
             with connection.cursor() as cursor:
                 cursor.execute(VERIFY_PATIENT.format(patient_id))
