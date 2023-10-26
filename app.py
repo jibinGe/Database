@@ -166,10 +166,11 @@ def clinic_get():
         return {"success": False, "message": "something went wrong"}
     return jsonify({"success": False, "message": "No authorization header"}), 401
 
+@app.route("/patient/create", methods=["POST"])
 @jwt_required()
 def patient_create():
     current_user = get_jwt_identity()
-    if current_user is not None: 
+    if current_user is not None:
         data = request.get_json()
         patient_id = data["patient_id"]
         full_name = data["full_name"]
@@ -178,36 +179,26 @@ def patient_create():
         created_by = current_user
         mobile = data["mobile"]
         created_date = datetime.now().strftime("%Y-%m-%d")
-        cursor.execute("SELECT clinicid FROM users WHERE email = %s;", (current_user,))
-        clinic_id = cursor.fetchone()[0]  # Assuming clinicid is a single value, not a tuple
-
-        # Generate the patient_id
-        patient_id = f"{clinic_id}_{patient_id}"
         with connection:
+            
             with connection.cursor() as cursor:
                 cursor.execute(VERIFY_PATIENT.format(patient_id))
                 id = cursor.fetchone()
                 if id is not None and len(id) > 0:
                     return {"success": False, "message": "Duplicate patient ID"}
                 else:
-                    # Get the clinic_id for the current user
-                    cursor.execute("SELECT clinicid FROM users WHERE email = %s;", (current_user,))
-                    clinic_id = cursor.fetchone()[0]  # Assuming clinicid is a single value, not a tuple
-
-                    # Generate the patient_id
-                    patient_id = f"{clinic_id}_{patient_id}"
-
                     # Insert patient data into the Patient table
+                    cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
+                    clinicid=cursor.fetchone()
                     cursor.execute(INSERT_PATIENT, (patient_id, full_name, dob, cycle_id, created_by, mobile, created_date))
-
                     # Log the activity directly in the ActivityLog table
                     activity_data = {
                         "employee_name": current_user,
-                        "patient_id": patient_id,  # Use the generated patient_id
+                        "patient_id": patient_id,
                         "patient_name": full_name,
                         "action_date": datetime.now().strftime("%Y-%m-%d"),
                         "action": "Created",
-                        "clinicid": clinic_id
+                        "clinicid":clinicid
                     }
                     cursor.execute("INSERT INTO ActivityLog (EmployeeName, PatientID, PatientName, ActionDate, Action, clinicid) VALUES (%s, %s, %s, %s, %s, %s);",
                                    (activity_data["employee_name"],
@@ -217,7 +208,7 @@ def patient_create():
                     cursor.execute(GET_ID)
                     id = cursor.fetchone()
                     return {"success": True, "message": "Patient details added", "id": id}
-        return {"success": False, "message": "Something went wrong"}
+        return {"success": False, "message": "something went wrong"}
     return jsonify({"success": False, "message": "No authorization header"}), 401
 
 
