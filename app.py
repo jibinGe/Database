@@ -402,9 +402,6 @@ def validate_json_data(fn):
 @jwt_required()
 def embryo_create():
     current_user = get_jwt_identity()
-    cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
-    clinicid=cursor.fetchone()
-    cid=clinicid[0]
     if current_user is not None: 
         data = request.get_json()
         embryo_number = data["embryo_number"]
@@ -424,7 +421,6 @@ def embryo_create():
         embryo_link = data["embryo_link"]
         filename = data["filename"]
         slno = data["slno"]
-        patient_id=str(str(cid)+'_'+patient_id)
 
         with connection:
             with connection.cursor() as cursor:
@@ -432,7 +428,7 @@ def embryo_create():
                 patient_id_value = cursor.fetchone()
                 cursor.execute(INSERT_EMBRYO, (embryo_number, embryo_name, embryo_age, cycle_id, scan_date, collection_date, transfer_date, pregnancy, live_birth, clinical_notes, embryo_status, patient_id, embryo_state, percentage, embryo_link,filename,slno))
                 return {"success": True, "message": "Embryo details added for"+patient_id}
-        return {"success": False, "message": "something went wrong"+patient_id}
+        return {"success": False, "message": "something went wrong"}
     return jsonify({"success": False, "message": "No authorization header"}), 401
 
 @app.route("/embryo/create_embryo", methods=["POST"])
