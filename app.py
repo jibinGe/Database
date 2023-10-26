@@ -432,7 +432,7 @@ def embryo_create():
                 patient_id_value = cursor.fetchone()
                 cursor.execute(INSERT_EMBRYO, (embryo_number, embryo_name, embryo_age, cycle_id, scan_date, collection_date, transfer_date, pregnancy, live_birth, clinical_notes, embryo_status, patient_id, embryo_state, percentage, embryo_link,filename,slno))
                 return {"success": True, "message": "Embryo details added for"+patient_id}
-        return {"success": False, "message": "something went wrong"}
+        return {"success": False, "message": "something went wrong"+patient_id}
     return jsonify({"success": False, "message": "No authorization header"}), 401
 
 @app.route("/embryo/create_embryo", methods=["POST"])
