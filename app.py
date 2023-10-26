@@ -170,9 +170,12 @@ def clinic_get():
 @jwt_required()
 def patient_create():
     current_user = get_jwt_identity()
+    cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
+    clinicid=cursor.fetchone()
+    cid=clinicid[0]
     if current_user is not None:
         data = request.get_json()
-        patient_id = data["patient_id"]
+        patient_id = str(cid)+'_'+data["patient_id"]
         full_name = data["full_name"]
         dob = data["dob"]
         cycle_id = data["cycle_id"]
@@ -188,10 +191,10 @@ def patient_create():
                     return {"success": False, "message": "Duplicate patient ID"}
                 else:
                     # Insert patient data into the Patient table
-                    cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
-                    clinicid=cursor.fetchone()
-                    cid=clinicid[0]
-                    patient_id=str(str(cid)+'_'+patient_id)
+                    # cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
+                    # clinicid=cursor.fetchone()
+                    # cid=clinicid[0]
+                    # patient_id=str(str(cid)+'_'+patient_id)
                     cursor.execute(INSERT_PATIENT, (patient_id, full_name, dob, cycle_id, created_by, mobile, created_date))
                     # Log the activity directly in the ActivityLog table
                     activity_data = {
