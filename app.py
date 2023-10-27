@@ -430,6 +430,7 @@ def embryo_create():
 @app.route("/embryo/create_embryo", methods=["POST"])
 @jwt_required()
 @validate_json_data
+#fix error
 def embryo_create_delete(data):
     current_user = get_jwt_identity()
     if current_user is not None:
