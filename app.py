@@ -170,7 +170,7 @@ def clinic_get():
 @jwt_required()
 def patient_create():
     current_user = get_jwt_identity()
-    if current_user is not None: 
+    if current_user is not None:
         data = request.get_json()
         patient_id = data["patient_id"]
         full_name = data["full_name"]
@@ -188,13 +188,15 @@ def patient_create():
                     return {"success": False, "message": "Duplicate patient ID"}
                 else:
                     # Insert patient data into the Patient table
-                    cursor.execute(INSERT_PATIENT, (patient_id, full_name, dob, cycle_id, created_by, mobile, created_date))
                     cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
                     clinicid=cursor.fetchone()
+                    # cid=clinicid[0] uncomment
+                    # patient_id=str(str(cid)+'_'+patient_id) uncomment
+                    cursor.execute(INSERT_PATIENT, (patient_id, full_name, dob, cycle_id, created_by, mobile, created_date))
                     # Log the activity directly in the ActivityLog table
                     activity_data = {
                         "employee_name": current_user,
-                        "patient_id": patient_id,
+                        "patient_id": patient_id,  
                         "patient_name": full_name,
                         "action_date": datetime.now().strftime("%Y-%m-%d"),
                         "action": "Created",
@@ -207,9 +209,11 @@ def patient_create():
 
                     cursor.execute(GET_ID)
                     id = cursor.fetchone()
-                    return {"success": True, "message": "Patient details added", "id": id}
+                    return {"success": True, "message": "Patient details added", "id": patient_id}
         return {"success": False, "message": "something went wrong"}
     return jsonify({"success": False, "message": "No authorization header"}), 401
+
+
 # @app.route("/patient/create", methods=["POST"])
 # @jwt_required()
 # def patient_create():
