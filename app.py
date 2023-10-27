@@ -190,8 +190,8 @@ def patient_create():
                     # Insert patient data into the Patient table
                     cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
                     clinicid=cursor.fetchone()
-                    # cid=clinicid[0]
-                    # patient_id=str(str(cid)+'_'+patient_id)
+                    # cid=clinicid[0] uncomment
+                    # patient_id=str(str(cid)+'_'+patient_id) uncomment
                     cursor.execute(INSERT_PATIENT, (patient_id, full_name, dob, cycle_id, created_by, mobile, created_date))
                     # Log the activity directly in the ActivityLog table
                     activity_data = {
