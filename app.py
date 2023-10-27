@@ -189,9 +189,9 @@ def patient_create():
                 else:
                     # Insert patient data into the Patient table
                     cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
-                    clinicid=cursor.fetchone()
-                    cid=clinicid[0]
-                    patient_id=str(str(cid)+'_'+patient_id)
+                    # clinicid=cursor.fetchone()
+                    # cid=clinicid[0]
+                    # patient_id=str(str(cid)+'_'+patient_id)
                     cursor.execute(INSERT_PATIENT, (patient_id, full_name, dob, cycle_id, created_by, mobile, created_date))
                     # Log the activity directly in the ActivityLog table
                     activity_data = {
@@ -427,7 +427,7 @@ def embryo_create():
                 cursor.execute(GET_PATIENT_ID.format(patient_id))
                 patient_id_value = cursor.fetchone()
                 cursor.execute(INSERT_EMBRYO, (embryo_number, embryo_name, embryo_age, cycle_id, scan_date, collection_date, transfer_date, pregnancy, live_birth, clinical_notes, embryo_status, patient_id, embryo_state, percentage, embryo_link,filename,slno))
-                return {"success": True, "message": "Embryo details added for"+patient_id}
+                return {"success": True, "message": "Embryo details added"}
         return {"success": False, "message": "something went wrong"}
     return jsonify({"success": False, "message": "No authorization header"}), 401
 
