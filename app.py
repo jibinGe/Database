@@ -366,7 +366,7 @@ def patient_get_by_id(id):
     if current_user is not None:
         with connection:
             with connection.cursor() as cursor:
-                cursor.execute(VIEW_PATIENT_BY_ID.format(patient_id))
+                cursor.execute(VIEW_PATIENT_BY_ID.format(id))
                 patient = cursor.fetchall()
 
                 # cursor.execute("SELECT FullName FROM PATIENT WHERE ID = %s;", (id,))
