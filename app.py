@@ -385,7 +385,7 @@ def patient_get_by_id(id):
                 #                (activity_data["employee_name"], activity_data["patient_id"],
                 #                 activity_data["patient_name"], activity_data["action_date"], activity_data["action"]))
 
-                return {"success": True, "patient": patient}
+                return {"success": True, "patient": patient, "cid": cid}
 
         return {"success": False, "message": "something went wrong"}
     return jsonify({"success": False, "message": "No authorization header"}), 401
