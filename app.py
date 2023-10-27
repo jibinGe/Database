@@ -189,7 +189,7 @@ def patient_create():
                 else:
                     # Insert patient data into the Patient table
                     cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
-                    # clinicid=cursor.fetchone()
+                    clinicid=cursor.fetchone()
                     # cid=clinicid[0]
                     # patient_id=str(str(cid)+'_'+patient_id)
                     cursor.execute(INSERT_PATIENT, (patient_id, full_name, dob, cycle_id, created_by, mobile, created_date))
