@@ -434,7 +434,6 @@ def embryo_create():
 @app.route("/embryo/create_embryo", methods=["POST"])
 @jwt_required()
 @validate_json_data
-#fix error
 def embryo_create_delete(data):
     current_user = get_jwt_identity()
     if current_user is not None:
@@ -471,7 +470,7 @@ def embryo_create_delete(data):
                         connection.commit()  # Commit the transaction if needed
                     except Exception as e:
                         connection.rollback()  # Rollback the transaction if an error occurs
-                        return jsonify({"success": False, "message": str(e)}), 500
+                        return jsonify({"success": False, "message": str(e)+str(patient_id)}), 500
                 # Fetch the newly inserted embryo details for the patient_id
                 cursor.execute("SELECT * FROM embryo WHERE patientid = %s", (patient_id,))
                 inserted_embryo_details = cursor.fetchall()
