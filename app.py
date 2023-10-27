@@ -320,49 +320,53 @@ def patient_delete():
 #         return {"success": False, "message": "something went wrong"}
 #     return jsonify({"success": False, "message": "No authorization header"}), 401
 
-# @app.route("/patient/get", methods=["GET"])
-# @jwt_required()
-# def patient_get():
-#     current_user = get_jwt_identity()
-    
-#     if current_user is not None: 
-#         with connection:
-#             with connection.cursor() as cursor:
-#                 cursor.execute(VIEW_PATIENT.format(current_user))
-#                 patients = cursor.fetchall()
-#                 # Modify the patient IDs to remove the clinic ID prefix
-#                 modified_patients = []
-#                 for patient in patients:
-#                     patient_id = patient[1].split('_')[1]
-#                     modified_patient = list(patient)
-#                     modified_patient[1] = patient_id
-#                     modified_patients.append(modified_patient)
-                
-#                 return {"success": True, "patients": modified_patients}
-#         return {"success": False, "message": "Something went wrong"}
-#     return jsonify({"success": False, "message": "No authorization header"}), 401
-
 @app.route("/patient/get", methods=["GET"])
 @jwt_required()
 def patient_get():
     current_user = get_jwt_identity()
+    
     if current_user is not None: 
         with connection:
             with connection.cursor() as cursor:
                 cursor.execute(VIEW_PATIENT.format(current_user))
                 patients = cursor.fetchall()
-                return {"success": True, "patients": patients}
-        return {"success": False, "message": "something went wrong"}
+                # Modify the patient IDs to remove the clinic ID prefix
+                modified_patients = []
+                for patient in patients:
+                    patient_id = patient[1].split('_')[1]
+                    modified_patient = list(patient)
+                    modified_patient[1] = patient_id
+                    modified_patients.append(modified_patient)
+                
+                return {"success": True, "patients": modified_patients}
+        return {"success": False, "message": "Something went wrong"}
     return jsonify({"success": False, "message": "No authorization header"}), 401
+
+# @app.route("/patient/get", methods=["GET"])
+# @jwt_required()
+# def patient_get():
+#     current_user = get_jwt_identity()
+#     if current_user is not None: 
+#         with connection:
+#             with connection.cursor() as cursor:
+#                 cursor.execute(VIEW_PATIENT.format(current_user))
+#                 patients = cursor.fetchall()
+#                 return {"success": True, "patients": patients}
+#         return {"success": False, "message": "something went wrong"}
+#     return jsonify({"success": False, "message": "No authorization header"}), 401
  
 @app.route("/patient/get/<id>", methods=["GET"])
 @jwt_required()
 def patient_get_by_id(id):
     current_user = get_jwt_identity()
+    cursor.execute("SELECT clinicid FROM users where email= %s;",(current_user,))
+    clinicid=cursor.fetchone()
+    cid=clinicid[0]
+    patient_id=str(str(cid)+'_'+id)
     if current_user is not None:
         with connection:
             with connection.cursor() as cursor:
-                cursor.execute(VIEW_PATIENT_BY_ID.format(id))
+                cursor.execute(VIEW_PATIENT_BY_ID.format(patient_id))
                 patient = cursor.fetchall()
 
                 # cursor.execute("SELECT FullName FROM PATIENT WHERE ID = %s;", (id,))
