@@ -13,7 +13,8 @@ from dotenv import load_dotenv
 load_dotenv(".env")
 from functools import wraps
 from flask_mail import Mail, Message
-
+from operator import itemgetter
+import calendar
 
 connection = psycopg2.connect(os.getenv("DATABASE_URL"))
 
@@ -838,63 +839,89 @@ def patient_view_report():
         return jsonify({"success": False, "message": "An error occurred", "error": str(e)}), 500
     
 
+# @app.route("/clinic/topay", methods=["POST"])
+# @jwt_required()
+# def clinic_to_pay():
+#     try:
+#         data = request.get_json()
+#         current_clinic_id = data["clinic_id"]
+#         current_month = datetime.now().strftime("%B %Y")
+        
+#         # Get all users from the current clinic
+#         with connection.cursor() as cursor:
+#             cursor.execute("SELECT email FROM users WHERE clinicid = %s", (current_clinic_id,))
+#             clinic_users = cursor.fetchall()
+#         noofcycle=0
+#         monthlyfee=0
+#         total_patient_scanned = 0
+#         total_amount = 0
+#         first_day_of_month = datetime.strptime(current_month, "%B %Y").replace(day=1)
+#         last_day_of_month = (first_day_of_month + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+#         first_day_of_month = first_day_of_month.date()
+#         last_day_of_month = last_day_of_month.date()
+#         first_day_of_month='2020-09-01'
+#         last_day_of_month='2020-09-30'
+#         for user_id in clinic_users:
+#             with connection.cursor() as cursor:
+#                 cursor.execute("SELECT p.noofclick, c.noofcycle, c.monthlyfee, c.extrafeeperpatients FROM patient p INNER JOIN clinic c ON p.createdby = %s AND p.vewreportdate >= %s AND p.vewreportdate <= %s AND c.id = %s", (user_id, first_day_of_month, last_day_of_month, current_clinic_id))
+#                 patient_data = cursor.fetchall()
+#                 for patient in patient_data:
+#                     noofclick, noofcycle, monthlyfee, extrafeeperpatients = patient
+#                     total_patient_scanned += noofclick
+#                 if total_patient_scanned > noofcycle:
+#                     total_amount = monthlyfee + (extrafeeperpatients * (total_patient_scanned - noofcycle))
+#                 else:
+#                     total_amount = monthlyfee
+        
+#         # Calculate Next bill due date and Due in
+#         with connection.cursor() as cursor:
+#             cursor.execute("SELECT startdate FROM clinic WHERE id = %s", (current_clinic_id,)) 
+#             start_date = cursor.fetchone()[0]
+#             next_due_date = start_date + timedelta(days=30)
+#             due_in_timedelta = next_due_date - datetime.now().date()
+#             due_in = str(due_in_timedelta.days) + ' Days'
+        
+#         payment_summary = {
+#             "Payment Month": current_month,
+#             "Patient Scanned": total_patient_scanned,
+#             "Amount": total_amount,
+#             "Next bill due date": next_due_date.strftime("%Y-%m-%d"),
+#             "Due in": due_in
+#         }
+        
+#         return jsonify(payment_summary)
+    
+#     except Exception as e:
+#         return jsonify({"success": False, "message": "An error occurred "+str(first_day_of_month) + str(last_day_of_month), "error": str(e)}), 500
+
 @app.route("/clinic/topay", methods=["POST"])
 @jwt_required()
 def clinic_to_pay():
     try:
         data = request.get_json()
         current_clinic_id = data["clinic_id"]
-        current_month = datetime.now().strftime("%B %Y")
-        
-        # Get all users from the current clinic
+        current_month = datetime.now().strftime("%Y-%m-%d")
         with connection.cursor() as cursor:
             cursor.execute("SELECT email FROM users WHERE clinicid = %s", (current_clinic_id,))
             clinic_users = cursor.fetchall()
-        noofcycle=0
-        monthlyfee=0
-        total_patient_scanned = 0
-        total_amount = 0
-        first_day_of_month = datetime.strptime(current_month, "%B %Y").replace(day=1)
-        last_day_of_month = (first_day_of_month + timedelta(days=32)).replace(day=1) - timedelta(days=1)
-        first_day_of_month = first_day_of_month.date()
-        last_day_of_month = last_day_of_month.date()
-        first_day_of_month='2023-09-01'
-        last_day_of_month='2023-09-30'
         for user_id in clinic_users:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT p.noofclick, c.noofcycle, c.monthlyfee, c.extrafeeperpatients FROM patient p INNER JOIN clinic c ON p.createdby = %s AND p.vewreportdate >= %s AND p.vewreportdate <= %s AND c.id = %s", (user_id, first_day_of_month, last_day_of_month, current_clinic_id))
+                cursor.execute("SELECT p.noofclick, c.noofcycle, c.monthlyfee, c.extrafeeperpatients FROM patient p INNER JOIN clinic c ON p.createdby = %s AND c.id = %s", (user_id,current_clinic_id))
                 patient_data = cursor.fetchall()
-                for patient in patient_data:
-                    noofclick, noofcycle, monthlyfee, extrafeeperpatients = patient
-                    total_patient_scanned += noofclick
-                if total_patient_scanned > noofcycle:
-                    total_amount = monthlyfee + (extrafeeperpatients * (total_patient_scanned - noofcycle))
-                else:
-                    total_amount = monthlyfee
-        
-        # Calculate Next bill due date and Due in
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT startdate FROM clinic WHERE id = %s", (current_clinic_id,)) 
-            start_date = cursor.fetchone()[0]
-            next_due_date = start_date + timedelta(days=30)
-            due_in_timedelta = next_due_date - datetime.now().date()
-            due_in = str(due_in_timedelta.days) + ' Days'
-        
+        print(patient_data)
         payment_summary = {
             "Payment Month": current_month,
-            "Patient Scanned": total_patient_scanned,
-            "Amount": total_amount,
-            "Next bill due date": next_due_date.strftime("%Y-%m-%d"),
-            "Due in": due_in
         }
         
         return jsonify(payment_summary)
     
     except Exception as e:
-        return jsonify({"success": False, "message": "An error occurred "+str(first_day_of_month) + str(last_day_of_month), "error": str(e)}), 500
+        return jsonify({"success": False, "message": "An error occurred ", "error": str(e)}), 500
+
+
 
 @app.route("/clinic/payment-summary", methods=["POST"])
-@jwt_required()
+@jwt_required()     
 def clinic_payment_summary():
     try:
         data = request.get_json()
@@ -913,18 +940,23 @@ def clinic_payment_summary():
                     next_due_date = start_date + timedelta(days=30)
                     due_in_timedelta = next_due_date - datetime.now().date()
                     due_in = str(due_in_timedelta.days) + ' Days'
+                    payment_date = datetime.strptime(year_and_month, "%Y-%m")
+                    formatted_payment_month = payment_date.strftime("%B %Y")
+                    month_name = calendar.month_name[int(month)]
 
                     data = {
-                        "payment_month": account[0],
+                        "payment_month": formatted_payment_month,
                         "patient_scanned": account[1],
                         "amount": account[2],
                         "next_bill_due_date": account[3],
                         "status": account[5],
                         "due_in": due_in,
-                        "month": month,
-                        "year": year
+                        "month": month_name,
+                        "year": year,
+                        "payment_date": payment_date
                     }
                     payment_summary.append(data)
+                    payment_summary = sorted(payment_summary, key=itemgetter("payment_date"), reverse=True)
                 else:
                     app.logger.error("Account data is incomplete: %s", account)
                     
