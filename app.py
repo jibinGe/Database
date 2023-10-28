@@ -906,34 +906,37 @@ def clinic_payment_summary():
 
             payment_summary = []
             for account in accounts:
-                year_and_month = str(account[0])
-                parts = year_and_month.split()
-                month = parts[0]
-                year = parts[1]
+                if len(account) >= 8:  # Check if the list has at least 8 elements
+                    year_and_month = str(account[0])
+                    parts = year_and_month.split()
+                    month = parts[0]
+                    year = parts[1]
 
-                start_date = account[7]
-                next_due_date = start_date + timedelta(days=30)
-                due_in_timedelta = next_due_date - datetime.now().date()
-                due_in = str(due_in_timedelta.days) + ' Days'
+                    start_date = account[7]
+                    next_due_date = start_date + timedelta(days=30)
+                    due_in_timedelta = next_due_date - datetime.now().date()
+                    due_in = str(due_in_timedelta.days) + ' Days'
 
-                data = {
-                    "payment_month": account[0],
-                    "patient_scanned": account[1],
-                    "amount": account[2],
-                    "next_bill_due_date": account[3],
-                    "status": account[5],
-                    "due_in": due_in,
-                    "month": month,
-                    "year": year
-                }
-                payment_summary.append(data)
-
+                    data = {
+                        "payment_month": account[0],
+                        "patient_scanned": account[1],
+                        "amount": account[2],
+                        "next_bill_due_date": account[3],
+                        "status": account[5],
+                        "due_in": due_in,
+                        "month": month,
+                        "year": year
+                    }
+                    payment_summary.append(data)
+                else:
+                    app.logger.error("Account data is incomplete")
+                    
             return jsonify({"success": True, "payment_summary": payment_summary})
 
     except Exception as e:
-        # Log the error message for debugging purposes
         app.logger.error("An error occurred: %s", str(e))
         return jsonify({"success": False, "message": "An error occurred", "error": str(e)}), 500
+
 
 
 
