@@ -929,14 +929,13 @@ def clinic_payment_summary():
                     }
                     payment_summary.append(data)
                 else:
-                    app.logger.error("Account data is incomplete")
+                    app.logger.error("Account data is incomplete: %s", account)
                     
             return jsonify({"success": True, "payment_summary": payment_summary})
 
     except Exception as e:
         app.logger.error("An error occurred: %s", str(e))
         return jsonify({"success": False, "message": "An error occurred", "error": str(e)}), 500
-
 
 
 
