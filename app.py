@@ -903,15 +903,12 @@ def clinic_payment_summary():
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM accounts WHERE clinicid = %s", (current_clinic_id,))
             accounts = cursor.fetchall()
-
+            print(accounts)
             payment_summary = []
             for account in accounts:
                 if len(account) >= 8:  # Check if the list has at least 8 elements
                     year_and_month = str(account[0])
-                    parts = year_and_month.split()
-                    month = parts[0]
-                    year = parts[1]
-
+                    year, month = year_and_month.split("-")
                     start_date = account[7]
                     next_due_date = start_date + timedelta(days=30)
                     due_in_timedelta = next_due_date - datetime.now().date()
