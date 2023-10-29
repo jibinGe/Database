@@ -448,6 +448,16 @@ def embryo_create_delete(data):
         with connection:
             with connection.cursor() as cursor:
                 patient_id = embryo_details[0]["patient_id"]  # Assuming patient_id is common for all embryo details
+                print(patient_id)
+                cursor.execute("SELECT noofclick FROM patient WHERE id = %s", (patient_id,))
+                current_click_count = cursor.fetchone()
+                if current_click_count is not None and current_click_count[0] is not None:
+                    current_click_count = current_click_count[0]
+                else:
+                    current_click_count = 0
+                cursor.execute("UPDATE patient SET noofclick = %s, vewreportdate = %s WHERE id = %s", (current_click_count + 1, datetime.now().strftime("%Y-%m-%d"), patient_id))
+                print(patient_id,current_click_count + 1)
+
                 # Clear the existing embryo details for the patient_id
                 cursor.execute("DELETE FROM embryo WHERE patientid = %s", (patient_id,))
                 for embryo_data in embryo_details:
@@ -808,92 +818,6 @@ def send_email():
 
     except Exception as e:
         return jsonify({'message': str(e)}), 500
-    
-@app.route("/patient/viewreport", methods=["POST"])
-@jwt_required()
-def patient_view_report():
-    data = request.get_json()
-    patient_id = data["patient_id"]
-    try:
-        current_user = get_jwt_identity()
-
-        if current_user is not None: 
-            # data = request.get_json()
-            # patient_id = data["patient_id"]           
-            with connection:
-                with connection.cursor() as cursor:
-                    # Fetch the current click count from the database
-                    cursor.execute("SELECT noofclick FROM patient WHERE patientid = %s", (patient_id,))
-                    current_click_count = cursor.fetchone()
-                    
-                    if current_click_count is not None and current_click_count[0] is not None:
-                        current_click_count = current_click_count[0]
-                    else:
-                        current_click_count = 0
-                    
-                    # Update click count and save the current date in the database
-                    cursor.execute("UPDATE patient SET noofclick = %s, vewreportdate = %s WHERE patientid = %s", (current_click_count + 1, datetime.now().strftime("%Y-%m-%d"), patient_id))
-                    
-                    return {"success": True, "message": "View Report clicked", "patientid": patient_id, "current_click_count": current_click_count+1}
-        return jsonify({"success": False, "message": "No authorization header"}), 401
-    except Exception as e:
-        return jsonify({"success": False, "message": "An error occurred", "error": str(patient_id)}), 500
-    
-
-# @app.route("/clinic/topay", methods=["POST"])
-# @jwt_required()
-# def clinic_to_pay():
-#     try:
-#         data = request.get_json()
-#         current_clinic_id = data["clinic_id"]
-#         current_month = datetime.now().strftime("%B %Y")
-        
-#         # Get all users from the current clinic
-#         with connection.cursor() as cursor:
-#             cursor.execute("SELECT email FROM users WHERE clinicid = %s", (current_clinic_id,))
-#             clinic_users = cursor.fetchall()
-#         noofcycle=0
-#         monthlyfee=0
-#         total_patient_scanned = 0
-#         total_amount = 0
-#         first_day_of_month = datetime.strptime(current_month, "%B %Y").replace(day=1)
-#         last_day_of_month = (first_day_of_month + timedelta(days=32)).replace(day=1) - timedelta(days=1)
-#         first_day_of_month = first_day_of_month.date()
-#         last_day_of_month = last_day_of_month.date()
-#         first_day_of_month='2020-09-01'
-#         last_day_of_month='2020-09-30'
-#         for user_id in clinic_users:
-#             with connection.cursor() as cursor:
-#                 cursor.execute("SELECT p.noofclick, c.noofcycle, c.monthlyfee, c.extrafeeperpatients FROM patient p INNER JOIN clinic c ON p.createdby = %s AND p.vewreportdate >= %s AND p.vewreportdate <= %s AND c.id = %s", (user_id, first_day_of_month, last_day_of_month, current_clinic_id))
-#                 patient_data = cursor.fetchall()
-#                 for patient in patient_data:
-#                     noofclick, noofcycle, monthlyfee, extrafeeperpatients = patient
-#                     total_patient_scanned += noofclick
-#                 if total_patient_scanned > noofcycle:
-#                     total_amount = monthlyfee + (extrafeeperpatients * (total_patient_scanned - noofcycle))
-#                 else:
-#                     total_amount = monthlyfee
-        
-#         # Calculate Next bill due date and Due in
-#         with connection.cursor() as cursor:
-#             cursor.execute("SELECT startdate FROM clinic WHERE id = %s", (current_clinic_id,)) 
-#             start_date = cursor.fetchone()[0]
-#             next_due_date = start_date + timedelta(days=30)
-#             due_in_timedelta = next_due_date - datetime.now().date()
-#             due_in = str(due_in_timedelta.days) + ' Days'
-        
-#         payment_summary = {
-#             "Payment Month": current_month,
-#             "Patient Scanned": total_patient_scanned,
-#             "Amount": total_amount,
-#             "Next bill due date": next_due_date.strftime("%Y-%m-%d"),
-#             "Due in": due_in
-#         }
-        
-#         return jsonify(payment_summary)
-    
-#     except Exception as e:
-#         return jsonify({"success": False, "message": "An error occurred "+str(first_day_of_month) + str(last_day_of_month), "error": str(e)}), 500
 
 @app.route("/clinic/topay", methods=["POST"])
 @jwt_required()
