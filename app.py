@@ -812,13 +812,14 @@ def send_email():
 @app.route("/patient/viewreport", methods=["POST"])
 @jwt_required()
 def patient_view_report():
+    data = request.get_json()
+    patient_id = data["patient_id"]
     try:
         current_user = get_jwt_identity()
-        
+
         if current_user is not None: 
-            data = request.get_json()
-            patient_id = data["patient_id"]
-            
+            # data = request.get_json()
+            # patient_id = data["patient_id"]           
             with connection:
                 with connection.cursor() as cursor:
                     # Fetch the current click count from the database
@@ -836,7 +837,7 @@ def patient_view_report():
                     return {"success": True, "message": "View Report clicked", "patientid": patient_id, "current_click_count": current_click_count+1}
         return jsonify({"success": False, "message": "No authorization header"}), 401
     except Exception as e:
-        return jsonify({"success": False, "message": "An error occurred", "error": str(e)}), 500
+        return jsonify({"success": False, "message": "An error occurred", "error": str(patient_id)}), 500
     
 
 # @app.route("/clinic/topay", methods=["POST"])
@@ -922,16 +923,18 @@ def clinic_to_pay():
 
 @app.route("/clinic/payment-summary", methods=["POST"])
 @jwt_required()     
-def clinic_payment_summary():
+def clinic_payment_summary():   
     try:
         data = request.get_json()
         current_clinic_id = data["clinic_id"]
-
+        current_user = get_jwt_identity()
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM accounts WHERE clinicid = %s", (current_clinic_id,))
             accounts = cursor.fetchall()
             print(accounts)
             payment_summary = []
+            patient_data = get_accounts_data(current_user)
+            payment_summary.extend(patient_data)
             for account in accounts:
                 if len(account) >= 8:  # Check if the list has at least 8 elements
                     year_and_month = str(account[0])
@@ -943,7 +946,6 @@ def clinic_payment_summary():
                     payment_date = datetime.strptime(year_and_month, "%Y-%m")
                     formatted_payment_month = payment_date.strftime("%B %Y")
                     month_name = calendar.month_name[int(month)]
-
                     data = {
                         "payment_month": formatted_payment_month,
                         "patient_scanned": account[1],
@@ -957,9 +959,10 @@ def clinic_payment_summary():
                     }
                     payment_summary.append(data)
                     payment_summary = sorted(payment_summary, key=itemgetter("payment_date"), reverse=True)
+                    print(payment_summary)
                 else:
                     app.logger.error("Account data is incomplete: %s", account)
-                    
+            print(payment_summary)        
             return jsonify({"success": True, "payment_summary": payment_summary})
 
     except Exception as e:
@@ -974,6 +977,83 @@ def logout():
     response = jsonify({'logout': True})
     unset_jwt_cookies(response)
     return response
+
+# @app.route('/accounts', methods=['POST'])
+# @jwt_required()
+def get_accounts_data(current_user):
+    try:
+        # patient data
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT clinicid FROM users WHERE email = %s", (current_user,))
+            clinicid = cursor.fetchall()
+            clinicid=clinicid[0][0]
+            cursor.execute("SELECT email FROM users WHERE clinicid = %s", (clinicid,))
+            emails = cursor.fetchall()
+            email_list = [email[0] for email in emails]
+        for email in email_list:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT vewreportdate,noofclick FROM patient WHERE createdby = %s", (email,))
+                patient_data_tuple=cursor.fetchall()
+            patient_data = []
+            for row in patient_data_tuple:
+                vewreportdate = row[0]
+                noofclick = row[1]
+                if vewreportdate is not None:
+                    vewreportdate = vewreportdate.strftime("%Y-%m-%d")
+                else:
+                    continue
+                patient_data.append({"vewreportdate": vewreportdate, "noofclick": noofclick})
+        #clinic data
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT monthlyfee,extrafeeperpatients,noofcycle FROM clinic WHERE id = %s", (clinicid,))
+            clinic_data_tuple = cursor.fetchall()
+            clinic_data=[]
+            for row in clinic_data_tuple:
+                monthlyfee = row[0]
+                extrafeeperpatients = row[1]
+                noofcycle =row[2]
+                clinic_data.append({"monthlyfee": monthlyfee, "extrafeeperpatients": extrafeeperpatients, "noofcycle": noofcycle})
+        clinic_data=clinic_data[0]
+        #accounts data
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT startdate FROM clinic WHERE id = %s", (clinicid,))
+            accounts_data_tuple = cursor.fetchall()
+            accounts_data=[]
+            for row in accounts_data_tuple:
+                startdate = str(row[0])
+                accounts_data.append({"startdate": startdate})
+        accounts_data=accounts_data[0]            
+        current_month = datetime.now().strftime('%Y-%m')
+        current_month_patient_data = [p for p in patient_data if p["vewreportdate"][:7] == current_month]
+        total_patients_scanned = sum(p["noofclick"] for p in current_month_patient_data)
+        if total_patients_scanned > clinic_data["noofcycle"]:
+            amount = clinic_data["monthlyfee"] + ((total_patients_scanned - clinic_data["noofcycle"]) * clinic_data["extrafeeperpatients"])
+        else:
+            amount = clinic_data["monthlyfee"]
+        start_date = datetime.strptime(accounts_data["startdate"], "%Y-%m-%d")
+        next_due_date = start_date + timedelta(days=30)
+        current_date = datetime.now()
+        due_in = (next_due_date - current_date).days
+        payment_status = "Unpaid" if due_in > 0 else "Unpaid"
+        year, month = current_month.split("-")
+        month_name = calendar.month_name[int(month)]
+        payment_summary = {
+            "amount": amount,
+            "due_in": str(due_in)+ ' Days',
+            "month": month_name,
+            "next_bill_due_date": next_due_date,#here
+            "patient_scanned": total_patients_scanned,
+            "payment_date":current_date,
+            "payment_month": month_name+' '+year,
+            "status": payment_status,
+            "year":year
+        }
+        return [payment_summary]
+    
+    except Exception as e:
+        app.logger.error("An error occurred: %s", str(e))
+        return jsonify({"success": False, "message": "An error occurred", "error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=False,host='0.0.0.0',threaded=True,port=5001)
