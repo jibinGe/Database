@@ -15,6 +15,8 @@ from functools import wraps
 from flask_mail import Mail, Message
 from operator import itemgetter
 import calendar
+import threading
+
 
 connection = psycopg2.connect(os.getenv("DATABASE_URL"))
 
@@ -902,8 +904,6 @@ def logout():
     unset_jwt_cookies(response)
     return response
 
-# @app.route('/accounts', methods=['POST'])
-# @jwt_required()
 def get_accounts_data(current_user):
     try:
         # patient data
@@ -977,7 +977,114 @@ def get_accounts_data(current_user):
     except Exception as e:
         app.logger.error("An error occurred: %s", str(e))
         return jsonify({"success": False, "message": "An error occurred", "error": str(e)}), 500
+    
+def extract_payment_data():
+    problem_title = 'Updated Payment'
+    sender_email = 'genesysailabs@gmail.com'
+    description = 'Code run sucessfull'
+    msg = Message(subject=problem_title,
+                  sender=sender_email,
+                  recipients=['jibingtsr@gmail.com'],
+                  body=description)
+    mail.send(msg)
+    current_date = datetime.now()
+    current_month_last_date = current_date.replace(day=calendar.monthrange(current_date.year, current_date.month)[1])
+
+    with connection.cursor() as cursor:
+            cursor.execute("SELECT clinicid FROM users WHERE email = %s", (current_user,))
+            clinicid = cursor.fetchall()
+            clinicid=clinicid[0][0]
+            cursor.execute("SELECT startdate FROM clinic WHERE id = %s", (clinicid,))
+            accounts_data= cursor.fetchall()
+            accounts_data=accounts_data[0][0]
+
+    payment_summary = get_accounts_data(current_user)
+
+    if current_date == current_month_last_date:
+        # Extract the required data from payment_summary
+        payment_month = payment_summary["payment_month"]
+        patients_canned = payment_summary["patient_scanned"]
+        amount = payment_summary["amount"]
+        status = "Unpaid"
+        current_user = get_jwt_identity()
+
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT clinicid FROM users WHERE email = %s", (current_user,))
+            clinicid = cursor.fetchall()
+            clinicid=clinicid[0][0]
+            cursor.execute("SELECT startdate FROM clinic WHERE id = %s", (clinicid,))
+            accounts_data= cursor.fetchall()
+            accounts_data=accounts_data[0][0]
+
+        # Calculate nextbilldate
+        start_date = datetime.strptime(accounts_data["startdate"], "%Y-%m-%d")
+        next_due_date = start_date + timedelta(days=30)
+
+        # Calculate startdate
+        previous_month_start_date = start_date + timedelta(days=30)
+        startdate = previous_month_start_date.strftime("%Y-%m-%d")
+
+        # Create the final data dictionary
+        final_data = {
+            "paymentmonth": payment_month,
+            "patientscanned": patients_canned,
+            "amount": amount,
+            "nextbilldate": next_due_date,
+            "clinicid": clinicid,
+            "status": status,
+            "startdate": startdate
+        }
+
+        with connection.cursor() as cursor:
+            # Define the SQL INSERT statement
+            sql = "INSERT INTO accounts (paymentmonth, patientscanned, amount, nextbilldate, clinicid, status, startdate) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+
+            # Extract values from final_data
+            values = (
+                final_data["paymentmonth"],
+                final_data["patientscanned"],
+                final_data["amount"],
+                final_data["nextbilldate"],
+                final_data["clinicid"],
+                final_data["status"],
+                final_data["startdate"]
+            )
+
+            # Execute the INSERT statement
+            cursor.execute(sql, values)
+
+            # Commit the transaction
+            connection.commit()
+
+        return final_data
+
+    return None
+
+def job():
+    current_date = datetime.now()
+    current_month_last_date = current_date.replace(day=calendar.monthrange(current_date.year, current_date.month)[1])
+    if current_date == current_month_last_date:
+        extract_payment_data()
+
+import time
+
+def periodic_job():
+    while True:
+            job()
+            time.sleep(8 * 60 * 60)
+            problem_title = 'Running 8hr job'
+            sender_email = 'genesysailabs@gmail.com'
+            description = 'Job run sucessfull'
+            msg = Message(subject=problem_title,
+                        sender=sender_email,
+                        recipients=['jibingtsr@gmail.com'],
+                        body=description)
+            mail.send(msg)
+
 
 
 if __name__ == '__main__':
+    job_thread = threading.Thread(target=periodic_job)
+    job_thread.daemon = True  # Allow the thread to exit when the main program exits
+    job_thread.start()
     app.run(debug=False,host='0.0.0.0',threaded=True,port=5001)
