@@ -15,7 +15,9 @@ from functools import wraps
 from flask_mail import Mail, Message
 from operator import itemgetter
 import calendar
-import threading
+from pytz import timezone  # Import the pytz library
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 
 connection = psycopg2.connect(os.getenv("DATABASE_URL"))
@@ -781,12 +783,6 @@ def activitylog_filter():
         return {"success": False, "message": "something went wrong"}
     return jsonify({"success": False, "message": "No authorization header"}), 401
 
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'genesysailabs@gmail.com'
-app.config['MAIL_PASSWORD'] = 'tlrldtobrwfyxvpc'
-
 mail = Mail(app)
 
 @app.route('/report_a_problem', methods=['POST'])
@@ -977,8 +973,159 @@ def get_accounts_data(current_user):
     except Exception as e:
         app.logger.error("An error occurred: %s", str(e))
         return jsonify({"success": False, "message": "An error occurred", "error": str(e)}), 500
+    
 
+def get_accounts_data_clinic_id(clinic_id):
+    try:
+        # patient data
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT email FROM users WHERE clinicid = %s", (clinic_id,))
+            emails = cursor.fetchall()
+            email_list = [email[0] for email in emails]
+        for email in email_list:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT vewreportdate,noofclick FROM patient WHERE createdby = %s", (email,))
+                patient_data_tuple=cursor.fetchall()
+            patient_data = []
+            for row in patient_data_tuple:
+                vewreportdate = row[0]
+                noofclick = row[1]
+                if vewreportdate is not None:
+                    vewreportdate = vewreportdate.strftime("%Y-%m-%d")
+                else:
+                    continue
+                patient_data.append({"vewreportdate": vewreportdate, "noofclick": noofclick})
+        #clinic data
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT monthlyfee,extrafeeperpatients,noofcycle FROM clinic WHERE id = %s", (clinic_id,))
+            clinic_data_tuple = cursor.fetchall()
+            clinic_data=[]
+            for row in clinic_data_tuple:
+                monthlyfee = row[0]
+                extrafeeperpatients = row[1]
+                noofcycle =row[2]
+                clinic_data.append({"monthlyfee": monthlyfee, "extrafeeperpatients": extrafeeperpatients, "noofcycle": noofcycle})
+        clinic_data=clinic_data[0]
+        #accounts data
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT startdate FROM clinic WHERE id = %s", (clinic_id,))
+            accounts_data_tuple = cursor.fetchall()
+            accounts_data=[]
+            for row in accounts_data_tuple:
+                startdate = str(row[0])
+                accounts_data.append({"startdate": startdate})
+        accounts_data=accounts_data[0]            
+        current_month = datetime.now().strftime('%Y-%m')
+        current_month_patient_data = [p for p in patient_data if p["vewreportdate"][:7] == current_month]
+        total_patients_scanned = sum(p["noofclick"] for p in current_month_patient_data)
+        if total_patients_scanned > clinic_data["noofcycle"]:
+            amount = clinic_data["monthlyfee"] + ((total_patients_scanned - clinic_data["noofcycle"]) * clinic_data["extrafeeperpatients"])
+        else:
+            amount = clinic_data["monthlyfee"]
+        start_date = datetime.strptime(accounts_data["startdate"], "%Y-%m-%d")
+        next_due_date = start_date + timedelta(days=30)
+        current_date = datetime.now()
+        due_in = (next_due_date - current_date).days
+        payment_status = "Unpaid" if due_in > 0 else "Unpaid"
+        year, month = current_month.split("-")
+        month_name = calendar.month_name[int(month)]
+        print(current_month)
+        payment_summary = {
+            "amount": amount,
+            "due_in": due_in,
+            "month": month_name,
+            "next_bill_due_date": next_due_date,#here
+            "patient_scanned": total_patients_scanned,
+            "payment_date":current_date,
+            "payment_month": str(current_month),
+            "status": payment_status,
+            "year":year
+        }
+        return [payment_summary]
+    
+    except Exception as e:
+        app.logger.error("An error occurred: %s", str(e))
+        return jsonify({"success": False, "message": "An error occurred", "error": str(e)}), 500
+    
+
+def extract_payment_data():
+    print("Running my function...")
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT id FROM clinic")
+        clinic_data = cursor.fetchall()
+    clinic_ids = [data[0] for data in clinic_data]
+    for clinic_id in clinic_ids:
+        print(clinic_id)
+        current_date = datetime.now()
+        current_month_last_date = current_date.replace(day=calendar.monthrange(current_date.year, current_date.month)[1])
+        with connection.cursor() as cursor:
+                cursor.execute("SELECT startdate FROM clinic WHERE id = %s", (clinic_id,))
+                accounts_data= cursor.fetchall()
+                accounts_data=accounts_data[0][0]
+
+        payment_summary_list = get_accounts_data_clinic_id(clinic_id)
+        # print(payment_summary_list)
+        print(str(current_date)+'---->'+str(current_month_last_date))
+        if current_date > current_month_last_date:
+            for payment_summary in payment_summary_list:
+                payment_month = payment_summary.get("payment_month")
+                patients_canned = payment_summary.get("patient_scanned")
+                amount = payment_summary.get("amount")
+                status = "Unpaid"
+
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT startdate FROM clinic WHERE id = %s", (clinic_id,))
+                accounts_data= cursor.fetchall()
+                accounts_data=accounts_data[0][0]
+            start_date = accounts_data.strftime("%Y-%m-%d")
+            start_date = datetime.combine(accounts_data, datetime.min.time())
+            next_due_date = start_date + timedelta(days=30)
+            previous_month_start_date = start_date + timedelta(days=30)
+            startdate = previous_month_start_date.strftime("%Y-%m-%d")
+            final_data = {
+                "paymentmonth": payment_month,
+                "patientscanned": patients_canned,
+                "amount": amount,
+                "nextbilldate": next_due_date,
+                "clinicid": clinic_id,
+                "status": status,
+                "startdate": startdate
+            }
+            print(final_data)
+            with connection.cursor() as cursor:
+                sql = "INSERT INTO accounts (paymentmonth, patientscanned, amount, nextbilldate, clinicid, status, startdate) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+                values = (
+                    final_data["paymentmonth"],
+                    final_data["patientscanned"],
+                    final_data["amount"],
+                    final_data["nextbilldate"],
+                    final_data["clinicid"],
+                    final_data["status"],
+                    final_data["startdate"]
+                )
+                cursor.execute(sql, values)
+                connection.commit()
+        else:
+            print('wow')
+            problem_title = 'problem_title'
+            sender_email = 'genesysailabs@gmail.com'
+            description = 'description'
+            msg = Message(subject=problem_title,
+                        sender=sender_email,
+                        recipients=['jibingtsr@gmail.com'],
+                        body=description)
+            mail.send(msg)
+
+
+scheduler = BackgroundScheduler(timezone=timezone('Asia/Kolkata'))
+scheduler.add_job(extract_payment_data, 'cron', hour=15, minute=20)
+scheduler.start()
 
 
 if __name__ == '__main__':
+    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    app.config['MAIL_PORT'] = 587
+    app.config['MAIL_USE_TLS'] = True
+    app.config['MAIL_USERNAME'] = 'genesysailabs@gmail.com'
+    app.config['MAIL_PASSWORD'] = 'tlrldtobrwfyxvpc'
     app.run(debug=False,host='0.0.0.0',threaded=True,port=5001)
