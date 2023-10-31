@@ -783,6 +783,12 @@ def activitylog_filter():
         return {"success": False, "message": "something went wrong"}
     return jsonify({"success": False, "message": "No authorization header"}), 401
 
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'genesysailabs@gmail.com'
+app.config['MAIL_PASSWORD'] = 'tlrldtobrwfyxvpc'
+
 mail = Mail(app)
 
 @app.route('/report_a_problem', methods=['POST'])
@@ -1118,14 +1124,9 @@ def extract_payment_data():
 
 
 scheduler = BackgroundScheduler(timezone=timezone('Asia/Kolkata'))
-scheduler.add_job(extract_payment_data, 'cron', hour=15, minute=20)
+scheduler.add_job(extract_payment_data, 'cron', hour=23, minute=00)
 scheduler.start()
 
 
 if __name__ == '__main__':
-    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-    app.config['MAIL_PORT'] = 587
-    app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = 'genesysailabs@gmail.com'
-    app.config['MAIL_PASSWORD'] = 'tlrldtobrwfyxvpc'
     app.run(debug=False,host='0.0.0.0',threaded=True,port=5001)
