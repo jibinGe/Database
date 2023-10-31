@@ -76,6 +76,13 @@ app.config['JWT_SECRET_KEY'] = 'genesys-2023-qwerty'
 # app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 jwt = JWTManager(app)
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'genesysailabs@gmail.com'
+app.config['MAIL_PASSWORD'] = 'tlrldtobrwfyxvpc'
+
+mail = Mail(app)
 
 # @app.after_request
 # def refresh_expiring_jwts(response):
@@ -783,14 +790,6 @@ def activitylog_filter():
         return {"success": False, "message": "something went wrong"}
     return jsonify({"success": False, "message": "No authorization header"}), 401
 
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'genesysailabs@gmail.com'
-app.config['MAIL_PASSWORD'] = 'tlrldtobrwfyxvpc'
-
-mail = Mail(app)
-
 @app.route('/report_a_problem', methods=['POST'])
 @jwt_required()
 def send_email():
@@ -1053,7 +1052,6 @@ def get_accounts_data_clinic_id(clinic_id):
         app.logger.error("An error occurred: %s", str(e))
         return jsonify({"success": False, "message": "An error occurred", "error": str(e)}), 500
     
-
 def extract_payment_data():
     print("Running my function...")
     with connection.cursor() as cursor:
@@ -1113,19 +1111,25 @@ def extract_payment_data():
                 connection.commit()
         else:
             print('wow')
-            problem_title = 'problem_title'
-            sender_email = 'genesysailabs@gmail.com'
-            description = 'description'
-            msg = Message(subject=problem_title,
-                        sender=sender_email,
-                        recipients=['jibingtsr@gmail.com'],
-                        body=description)
-            mail.send(msg)
+    email_message()
+
+def email_message():
+    with app.app_context():  # Create a Flask app context
+        problem_title = 'Test run at 11:30 PM'
+        sender_email = 'genesysailabs@gmail.com'
+        description = 'test run sucessfull'
+        msg = Message(subject=problem_title, sender=sender_email, recipients=['jibingtsr@gmail.com'], body=description)
+        mail.send(msg)
+    
 
 
 scheduler = BackgroundScheduler(timezone=timezone('Asia/Kolkata'))
-scheduler.add_job(extract_payment_data, 'cron', hour=23, minute=00)
+scheduler.add_job(extract_payment_data, 'cron', hour=23, minute=30)
 scheduler.start()
+
+# scheduler = BackgroundScheduler()
+# scheduler.add_job(email_message, 'interval', seconds=30)
+# scheduler.start()
 
 
 if __name__ == '__main__':
