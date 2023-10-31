@@ -1070,7 +1070,14 @@ def extract_payment_data():
         payment_summary_list = get_accounts_data_clinic_id(clinic_id)
         # print(payment_summary_list)
         print(str(current_date)+'---->'+str(current_month_last_date))
-        if current_date > current_month_last_date:
+        with connection.cursor() as cursor:
+                cursor.execute("SELECT startdate FROM clinic WHERE id = %s", (clinic_id,))
+                accounts_data= cursor.fetchall()
+                accounts_data=accounts_data[0][0]
+        start_date = accounts_data.strftime("%Y-%m-%d")
+        start_date = datetime.combine(accounts_data, datetime.min.time())
+        next_due_date = start_date + timedelta(days=30)
+        if current_date > next_due_date:
             for payment_summary in payment_summary_list:
                 payment_month = payment_summary.get("payment_month")
                 patients_canned = payment_summary.get("patient_scanned")
