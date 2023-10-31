@@ -1071,7 +1071,7 @@ import time
 def periodic_job():
     while True:
             job()
-            time.sleep(8 * 60 * 60)
+            time.sleep(60)
             problem_title = 'Running 8hr job'
             sender_email = 'genesysailabs@gmail.com'
             description = 'Job run sucessfull'
