@@ -1077,7 +1077,7 @@ def extract_payment_data():
         start_date = accounts_data.strftime("%Y-%m-%d")
         start_date = datetime.combine(accounts_data, datetime.min.time())
         next_due_date = start_date + timedelta(days=30)
-        if current_date > next_due_date:
+        if current_date > current_month_last_date:
             for payment_summary in payment_summary_list:
                 payment_month = payment_summary.get("payment_month")
                 patients_canned = payment_summary.get("patient_scanned")
