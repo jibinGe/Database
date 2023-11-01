@@ -956,7 +956,7 @@ def get_accounts_data(current_user):
         else:
             amount = clinic_data["monthlyfee"]
         start_date = datetime.strptime(accounts_data["startdate"], "%Y-%m-%d")
-        next_due_date = start_date + timedelta(days=30)
+        next_due_date = start_date + timedelta(days=60)
         current_date = datetime.now()
         due_in = (next_due_date - current_date).days
         payment_status = "Unpaid" if due_in > 0 else "Unpaid"
