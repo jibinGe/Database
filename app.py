@@ -1128,7 +1128,44 @@ def email_message():
         msg = Message(subject=problem_title, sender=sender_email, recipients=['jibingtsr@gmail.com'], body=description)
         mail.send(msg)
     
-
+@app.route('/api/payment', methods=['GET'])
+@jwt_required()
+def get_payment_info():
+    payment_data = {
+        "paymentmonth": 'November 2023',
+        "patient_scanned": 11,
+        "next_bill_due_date": "Mon, 04 Dec 2023 00:00:00 GMT",
+        "status": "Unpaid",
+        "patients": [
+            [
+                100658,
+                "100001_1test",
+                "Jibin George",
+                "Fri, 17 Nov 2023 00:00:00 GMT",
+                "1",
+                "emma@test.com",
+                "+917907268722",
+                None,
+                "Thu, 02 Nov 2023 00:00:00 GMT",
+                "Thu, 02 Nov 2023 00:00:00 GMT",
+                11
+            ],
+            [
+                100657,
+                "100001_CRAFT0001",
+                "Ann Thomas",
+                "Thu, 30 Mar 2000 00:00:00 GMT",
+                "2",
+                "emma@test.com",
+                "8943071221",
+                None,
+                "Mon, 30 Oct 2023 00:00:00 GMT",
+                "Mon, 30 Oct 2023 00:00:00 GMT",
+                2
+            ]
+        ]
+    }
+    return jsonify(payment_data)
 
 scheduler = BackgroundScheduler(timezone=timezone('Asia/Kolkata'))
 scheduler.add_job(extract_payment_data, 'cron', hour=23, minute=30)
